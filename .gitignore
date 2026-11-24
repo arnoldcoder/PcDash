@@ -1,0 +1,14 @@
+# build output (contains local paths like C:\Users\<name>\.nuget)
+bin/
+obj/
+publish/
+share/
+*.zip
+
+# local reference images
+*.webp
+
+# editor files
+.vs/
+.vscode/
+*.user

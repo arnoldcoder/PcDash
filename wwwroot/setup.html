@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PC Dash Setup</title>
+<link rel="icon" href="icon.png">
+<style>
+:root{
+  --bg:#0f1116; --card:#181b22; --card2:#1f232c; --line:#2a2f3a; --line2:#3a4050;
+  --fg:#e8eaf0; --muted:#8a90a0; --faint:#5b6170;
+  --accent:#d97757; --ok:#4cc9a0; --warn:#e6b94c; --bad:#e5604f;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+button,input,select,textarea{font:inherit;color:inherit}
+.top{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;padding:12px 24px}
+.top h1{font-size:18px;margin:0;font-weight:600}
+.top .spacer{flex:1}
+#status{color:var(--muted);font-size:13px}
+#status.ok{color:var(--ok)} #status.err{color:var(--bad)}
+main{max-width:1240px;margin:0 auto;padding:20px 24px 60px;display:flex;flex-direction:column;gap:28px}
+section>h2{font-size:15px;margin:0 0 4px}
+section>p.sub{margin:0 0 14px;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+
+.deckwrap{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:18px;align-items:start}
+@media (max-width:900px){.deckwrap{grid-template-columns:1fr}}
+.toolbar{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.toolbar .lbl{color:var(--muted)}
+.grid{display:grid;gap:10px}
+.tile{background:var(--card2);border:1px solid var(--line);border-radius:14px;aspect-ratio:1.15;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:6px;padding:6px;cursor:pointer;min-width:0;position:relative;user-select:none}
+.tile[style*="--tint"]{background:color-mix(in srgb,var(--tint) 26%,var(--card2));border-color:color-mix(in srgb,var(--tint) 45%,var(--line))}
+.tile.sel{outline:2px solid var(--accent);outline-offset:2px}
+.tile.dragging{opacity:.35}
+.tile.over{outline:2px dashed var(--muted);outline-offset:2px}
+.tile img{width:42%;max-width:56px;aspect-ratio:1;object-fit:contain;pointer-events:none}
+.tile .emoji{font-size:30px;line-height:1}
+.tile .letter{width:42%;max-width:50px;aspect-ratio:1;border-radius:22%;display:grid;place-items:center;background:var(--card);font-size:22px;font-weight:600;color:var(--muted)}
+.tile .lbl{font-size:12px;color:var(--muted);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tile.add{border-style:dashed;background:transparent;color:var(--muted);font-size:13px}
+.tile.add .plus{font-size:28px;line-height:1}
+.hint{color:var(--faint);font-size:12px}
+
+.editor{position:sticky;top:70px;display:flex;flex-direction:column;gap:12px}
+.editor h3{margin:0;font-size:14px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field>label,.field>.l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+input[type=text],input[type=search],select,textarea{background:var(--bg);border:1px solid var(--line2);border-radius:9px;padding:8px 10px;width:100%;outline:none}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{min-height:70px;resize:vertical;font-family:ui-monospace,Consolas,monospace;font-size:13px}
+.row{display:flex;gap:8px;align-items:center}
+.row>input{flex:1}
+.btn{background:var(--card2);border:1px solid var(--line2);border-radius:9px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.danger{color:var(--bad)}
+.btn.rec{border-color:var(--bad);color:var(--bad)}
+.check{display:flex;gap:8px;align-items:center;cursor:pointer;color:var(--fg)}
+.seg{display:inline-flex;background:var(--bg);border:1px solid var(--line2);border-radius:10px;padding:2px;gap:2px}
+.seg button{border:0;background:none;color:var(--muted);padding:5px 11px;border-radius:8px;cursor:pointer}
+.seg button.on{background:var(--line2);color:var(--fg)}
+.swatches{display:flex;gap:6px;flex-wrap:wrap}
+.sw{width:26px;height:26px;border-radius:8px;border:2px solid transparent;cursor:pointer;padding:0}
+.sw.on{border-color:var(--fg)}
+.sw.none{background:var(--card2);border:1px dashed var(--line2);color:var(--muted);font-size:13px}
+.sw.none.on{border:2px solid var(--fg)}
+.emojis{display:flex;gap:2px;flex-wrap:wrap}
+.emojis button{background:none;border:0;font-size:19px;padding:2px 4px;cursor:pointer;border-radius:6px}
+.emojis button:hover{background:var(--card2)}
+.target{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--faint);word-break:break-all}
+.warn{color:var(--warn);font-size:12px}
+.err{color:var(--bad);font-size:12px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:12px}
+.actions .spacer{flex:1}
+.empty{color:var(--muted);padding:30px 10px;text-align:center}
+
+.wxgrid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:900px){.wxgrid{grid-template-columns:1fr}}
+.results{display:flex;flex-direction:column;gap:4px;margin-top:8px}
+.results button{text-align:left;background:var(--card2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;cursor:pointer}
+.results button:hover{border-color:var(--accent)}
+.results small{color:var(--muted)}
+.wxnow{font-size:15px}
+.wxnow b{font-size:22px;font-weight:500}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>PC Dash setup</h1>
+  <span class="spacer"></span>
+  <span id="status">Loading…</span>
+</div>
+
+<main>
+  <section>
+    <h2>Deck</h2>
+    <p class="sub">Buttons on the phone's Deck tab. Click a button to edit it, drag to reorder. Changes save automatically and reach the phone within ~10 seconds.</p>
+    <div class="deckwrap">
+      <div class="card">
+        <div class="toolbar">
+          <span class="lbl">Columns (landscape)</span>
+          <div class="seg" id="cols"></div>
+          <span class="hint">Portrait phones show at most 4.</span>
+        </div>
+        <div class="grid" id="grid"></div>
+      </div>
+      <div class="card editor" id="editor"><div class="empty">Select a button to edit it,<br>or add a new one.</div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Weather</h2>
+    <p class="sub">Shown on the phone's Clock tab (each phone can switch it off in its gear menu). Data from Open-Meteo, a free service; only the chosen location is sent.</p>
+    <div class="wxgrid">
+      <div class="card">
+        <div class="field">
+          <span class="l">Location</span>
+          <div id="wxCurrent" class="hint">Not set</div>
+        </div>
+        <div class="field" style="margin-top:12px">
+          <span class="l">Find a city</span>
+          <form class="row" id="wxForm"><input type="search" id="wxQuery" placeholder="e.g. Cluj-Napoca"><button class="btn" type="submit">Search</button></form>
+          <div class="results" id="wxResults"></div>
+        </div>
+        <div class="row" style="margin-top:14px;justify-content:space-between">
+          <div class="row"><span class="l hint">Units</span><div class="seg" id="wxUnits"><button data-v="c">°C</button><button data-v="f">°F</button></div></div>
+          <button class="btn danger" id="wxClear" type="button">Remove location</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="field"><span class="l">Preview</span><div id="wxPreview" class="hint">–</div></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<datalist id="appList"></datalist>
+
+<script>
+"use strict";
+const KEY = new URLSearchParams(location.search).get("k") || "";
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const q = path => path + (path.includes("?") ? "&" : "?") + "k=" + encodeURIComponent(KEY);
+
+let cfg = null, apps = [], browsers = [], selected = null, deckView = null, recording = false;
+
+const TYPES = [
+  ["app", "App"], ["url", "Website"], ["path", "Folder or file"], ["hotkey", "Keyboard shortcut / media key"],
+  ["text", "Type text"], ["command", "Run command"], ["system", "System action"],
+];
+const PRESETS = [
+  ["", "Presets…"], ["playpause", "Media: play / pause"], ["next", "Media: next track"], ["prev", "Media: previous track"],
+  ["volup", "Volume up"], ["voldown", "Volume down"], ["mute", "Mute speakers"],
+  ["win+shift+s", "Screenshot (Snipping Tool)"], ["win+d", "Show desktop"], ["win+tab", "Task view"], ["win+e", "File Explorer"],
+  ["win+v", "Clipboard history"], ["win+.", "Emoji panel"], ["ctrl+shift+m", "Teams: mute / unmute mic"],
+  ["ctrl+shift+o", "Teams: camera on / off"], ["alt+f4", "Close window"], ["ctrl+c", "Copy"], ["ctrl+v", "Paste"],
+];
+const SYSTEM = [["lock", "Lock PC"], ["sleep", "Sleep"], ["monitoroff", "Turn monitor off"], ["showdesktop", "Show desktop"]];
+const COLORS = ["", "#d97757", "#e5604f", "#e6b94c", "#4cc9a0", "#5aa9e6", "#9b7be0", "#e66fb0", "#8a90a0"];
+const EMOJIS = "🌐 📁 💬 📧 📅 🎵 🎮 🎬 📷 🖥️ 💻 ⚙️ 🔒 🌙 🚀 ⭐ ❤️ ✅ 📝 🔍 🧮 🗂️ 🎧 🎙️ 📞 ☕ 🏠 🛒".split(" ");
+
+/* ---------- load & save ---------- */
+async function load() {
+  try {
+    const [c, a, b] = await Promise.all([
+      fetch(q("/api/config")).then(r => r.json()),
+      fetch(q("/api/setup/apps")).then(r => r.json()).catch(() => []),
+      fetch(q("/api/setup/browsers")).then(r => r.json()).catch(() => []),
+    ]);
+    cfg = c; apps = a; browsers = b;
+    $("appList").innerHTML = apps.map(x => `<option value="${esc(x.name)}">`).join("");
+    await refreshDeckView();
+    renderAll();
+    status("All changes saved", "ok");
+  } catch (e) { status("Couldn't load settings: " + e.message, "err"); }
+}
+
+let saveTimer;
+function save(immediate) {
+  clearTimeout(saveTimer);
+  status("Saving…");
+  saveTimer = setTimeout(async () => {
+    try {
+      const r = await fetch(q("/api/config"), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg) });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      await refreshDeckView();
+      renderGrid();
+      status("All changes saved", "ok");
+    } catch (e) { status("Save failed: " + e.message, "err"); }
+  }, immediate ? 0 : 450);
+}
+function status(text, cls = "") { const s = $("status"); s.textContent = text; s.className = cls; }
+async function refreshDeckView() { try { deckView = await fetch(q("/api/deck")).then(r => r.json()); } catch {} }
+
+/* ---------- deck grid ---------- */
+function renderAll() { renderCols(); renderGrid(); renderEditor(); renderWeatherSetup(); }
+
+function renderCols() {
+  $("cols").innerHTML = [3, 4, 5, 6, 7, 8].map(n => `<button data-v="${n}" class="${cfg.deck.columns === n ? "on" : ""}">${n}</button>`).join("");
+}
+$("cols").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  cfg.deck.columns = +b.dataset.v; renderCols(); renderGrid(); save();
+});
+
+const letterOf = s => (String(s || "?").trim()[0] || "?").toUpperCase();
+function iconHtml(btn) {
+  const v = deckView?.buttons?.find(x => x.id === btn.id);
+  if (btn.icon === "emoji" && btn.emoji) return `<span class="emoji">${esc(btn.emoji)}</span>`;
+  if (v?.image) return `<img alt="" src="${q(`/api/deck/icon/${encodeURIComponent(btn.id)}?v=${encodeURIComponent(v.image)}`)}" data-fb="${esc(v.fallback || "")}" data-letter="${esc(letterOf(btn.label))}">`;
+  if (v?.fallback) return `<span class="emoji">${esc(v.fallback)}</span>`;
+  return `<span class="letter">${esc(letterOf(btn.label))}</span>`;
+}
+
+function renderGrid() {
+  const g = $("grid");
+  g.style.gridTemplateColumns = `repeat(${cfg.deck.columns}, minmax(0,1fr))`;
+  g.innerHTML = cfg.deck.buttons.map(b =>
+    `<div class="tile${b.id === selected ? " sel" : ""}" draggable="true" data-id="${esc(b.id)}"${b.color ? ` style="--tint:${esc(b.color)}"` : ""}>${iconHtml(b)}<span class="lbl">${esc(b.label || "(no label)")}</span></div>`
+  ).join("") + `<div class="tile add" id="addTile"><span class="plus">+</span><span>Add button</span></div>`;
+  g.querySelectorAll("img").forEach(img => img.addEventListener("error", () => {
+    img.outerHTML = img.dataset.fb ? `<span class="emoji">${esc(img.dataset.fb)}</span>` : `<span class="letter">${esc(img.dataset.letter)}</span>`;
+  }, { once: true }));
+}
+
+$("grid").addEventListener("click", e => {
+  if (e.target.closest("#addTile")) { addButton(); return; }
+  const t = e.target.closest(".tile[data-id]"); if (!t) return;
+  selected = t.dataset.id; renderGrid(); renderEditor();
+});
+
+// drag to reorder
+let dragId = null;
+$("grid").addEventListener("dragstart", e => { const t = e.target.closest(".tile[data-id]"); if (!t) return; dragId = t.dataset.id; t.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; });
+$("grid").addEventListener("dragend", () => { dragId = null; renderGrid(); });
+$("grid").addEventListener("dragover", e => {
+  const t = e.target.closest(".tile[data-id]"); if (!dragId || !t) return;
+  e.preventDefault();
+  $("grid").querySelectorAll(".over").forEach(x => x.classList.remove("over"));
+  if (t.dataset.id !== dragId) t.classList.add("over");
+});
+$("grid").addEventListener("drop", e => {
+  const t = e.target.closest(".tile[data-id]"); if (!dragId || !t || t.dataset.id === dragId) return;
+  e.preventDefault();
+  const list = cfg.deck.buttons, from = list.findIndex(b => b.id === dragId), to = list.findIndex(b => b.id === t.dataset.id);
+  const [item] = list.splice(from, 1); list.splice(to, 0, item);
+  save(); renderGrid();
+});
+
+function newId() { return Math.random().toString(36).slice(2, 12); }
+function addButton() {
+  const b = { id: newId(), label: "New button", type: "app", target: "", args: null, browser: "default", newWindow: false, shell: "cmd", hidden: true, icon: "auto", emoji: null, color: null };
+  cfg.deck.buttons.push(b);
+  selected = b.id;
+  renderGrid(); renderEditor();
+  save();
+  setTimeout(() => $("fLabel")?.select(), 0);
+}
+
+/* ---------- editor ---------- */
+const cur = () => cfg.deck.buttons.find(b => b.id === selected);
+
+function renderEditor() {
+  const ed = $("editor"), b = cur();
+  if (!b) { ed.innerHTML = `<div class="empty">Select a button to edit it,<br>or add a new one.</div>`; return; }
+  ed.innerHTML = `
+    <h3>Edit button</h3>
+    <div class="field"><label for="fLabel">Label</label><input type="text" id="fLabel" value="${esc(b.label)}" maxlength="40"></div>
+    <div class="field"><label for="fType">What it does</label>
+      <select id="fType">${TYPES.map(([v, n]) => `<option value="${v}"${b.type === v ? " selected" : ""}>${n}</option>`).join("")}</select></div>
+    <div id="typeFields" style="display:flex;flex-direction:column;gap:12px"></div>
+    <div class="field"><span class="l">Icon</span>
+      <div class="row"><div class="seg" id="fIcon"><button data-v="auto" class="${b.icon !== "emoji" ? "on" : ""}">Automatic</button><button data-v="emoji" class="${b.icon === "emoji" ? "on" : ""}">Emoji</button></div>
+      <input type="text" id="fEmoji" value="${esc(b.emoji || "")}" placeholder="🙂" style="width:70px;flex:none;text-align:center;font-size:18px;${b.icon === "emoji" ? "" : "display:none"}"></div>
+      <div class="emojis" id="fEmojis" style="${b.icon === "emoji" ? "" : "display:none"}">${EMOJIS.map(e => `<button type="button">${e}</button>`).join("")}</div>
+      <span class="hint" id="iconHint">${b.icon === "emoji" ? "" : "Taken from the app, file or website when possible."}</span>
+    </div>
+    <div class="field"><span class="l">Color</span>
+      <div class="swatches" id="fColor">${COLORS.map(c => c
+        ? `<button class="sw${b.color === c ? " on" : ""}" data-v="${c}" style="background:${c}" title="${c}"></button>`
+        : `<button class="sw none${!b.color ? " on" : ""}" data-v="" title="No color">∅</button>`).join("")}</div></div>
+    <div class="actions">
+      <button class="btn primary" id="fTest" type="button">Test on this PC</button>
+      <span class="spacer"></span>
+      <button class="btn" id="fLeft" type="button" title="Move left">←</button>
+      <button class="btn" id="fRight" type="button" title="Move right">→</button>
+      <button class="btn danger" id="fDelete" type="button">Delete</button>
+    </div>
+    <div id="testResult" class="hint"></div>`;
+
+  renderTypeFields();
+
+  $("fLabel").addEventListener("input", e => { b.label = e.target.value; b._autoLabel = false; renderGrid(); save(); });
+  $("fType").addEventListener("change", e => {
+    b.type = e.target.value; b.target = ""; b.args = null;
+    if (b.type === "system") b.target = "lock";
+    renderTypeFields(); save();
+  });
+  $("fIcon").addEventListener("click", e => {
+    const x = e.target.closest("button"); if (!x) return;
+    b.icon = x.dataset.v; renderEditor(); renderGrid(); save();
+  });
+  $("fEmoji").addEventListener("input", e => { b.emoji = e.target.value.trim() || null; renderGrid(); save(); });
+  $("fEmojis").addEventListener("click", e => {
+    const x = e.target.closest("button"); if (!x) return;
+    b.emoji = x.textContent; $("fEmoji").value = b.emoji; renderGrid(); save();
+  });
+  $("fColor").addEventListener("click", e => {
+    const x = e.target.closest(".sw"); if (!x) return;
+    b.color = x.dataset.v || null;
+    $("fColor").querySelectorAll(".sw").forEach(s => s.classList.toggle("on", s === x));
+    renderGrid(); save();
+  });
+  $("fDelete").addEventListener("click", () => {
+    cfg.deck.buttons = cfg.deck.buttons.filter(x => x.id !== b.id);
+    selected = null; renderGrid(); renderEditor(); save(true);
+  });
+  $("fLeft").addEventListener("click", () => move(-1));
+  $("fRight").addEventListener("click", () => move(1));
+  $("fTest").addEventListener("click", testButton);
+}
+
+function move(d) {
+  const list = cfg.deck.buttons, i = list.findIndex(x => x.id === selected), j = i + d;
+  if (i < 0 || j < 0 || j >= list.length) return;
+  [list[i], list[j]] = [list[j], list[i]];
+  renderGrid(); save();
+}
+
+async function testButton() {
+  const r = $("testResult");
+  clearTimeout(saveTimer);
+  status("Saving…");
+  await fetch(q("/api/config"), { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cfg) });
+  status("All changes saved", "ok");
+  r.className = "hint"; r.textContent = "Running…";
+  try {
+    const res = await fetch(q(`/api/deck/press/${encodeURIComponent(selected)}`), { method: "POST" });
+    const j = await res.json();
+    r.className = j.ok ? "hint" : "err";
+    r.textContent = j.ok ? "✓ Done. Key presses go to whichever window is in front, which is this browser right now." : "✗ " + (j.error || "Failed");
+  } catch (e) { r.className = "err"; r.textContent = "✗ " + e.message; }
+}
+
+function setAutoLabel(b, label) {
+  if (!b.label || b.label === "New button" || b._autoLabel) { b.label = label; b._autoLabel = true; $("fLabel").value = label; }
+}
+
+function renderTypeFields() {
+  const b = cur(), box = $("typeFields");
+  const pick = (kind, label) => `<button class="btn" type="button" data-pick="${kind}">${label}</button>`;
+  switch (b.type) {
+    case "app": {
+      const app = apps.find(a => a.target === b.target);
+      box.innerHTML = `
+        <div class="field"><label for="fApp">App</label>
+          <div class="row"><input type="text" id="fApp" list="appList" placeholder="Start typing an app name…" value="${esc(app ? app.name : "")}">${pick("file", "Browse…")}</div>
+          <span class="target" id="fTargetShow">${b.target ? "Opens: " + esc(b.target) : ""}</span>
+          <span class="hint">${apps.length} apps from your Start menu, or browse for any .exe / shortcut.</span></div>
+        <div class="field" id="argsField"${b.target.startsWith("shell:") ? ' style="display:none"' : ""}><label for="fArgs">Arguments (optional)</label>
+          <input type="text" id="fArgs" value="${esc(b.args || "")}" placeholder="e.g. --profile work"></div>`;
+      $("fApp").addEventListener("input", e => {
+        const a = apps.find(x => x.name.toLowerCase() === e.target.value.trim().toLowerCase());
+        if (!a) return;
+        b.target = a.target; b.args = null;
+        setAutoLabel(b, a.name);
+        $("fTargetShow").textContent = "Opens: " + a.name;
+        $("argsField").style.display = "none";
+        renderGrid(); save();
+      });
+      $("fArgs").addEventListener("input", e => { b.args = e.target.value || null; save(); });
+      break;
+    }
+    case "url":
+      box.innerHTML = `
+        <div class="field"><label for="fUrl">Web address</label><input type="text" id="fUrl" value="${esc(b.target)}" placeholder="https://…"></div>
+        <div class="field"><label for="fBrowser">Open in</label>
+          <select id="fBrowser"><option value="default">Default browser</option>${browsers.map(x => `<option value="${x.id}"${b.browser === x.id ? " selected" : ""}>${esc(x.name)}</option>`).join("")}</select></div>
+        <label class="check"><input type="checkbox" id="fNewWin"${b.newWindow ? " checked" : ""}> Open in a new window</label>`;
+      $("fUrl").addEventListener("input", e => {
+        b.target = e.target.value.trim();
+        try { const host = new URL(/^[a-z]+:/i.test(b.target) ? b.target : "https://" + b.target).hostname.replace(/^www\./, ""); setAutoLabel(b, host.split(".")[0].replace(/^./, c => c.toUpperCase())); } catch {}
+        renderGrid(); save();
+      });
+      $("fBrowser").addEventListener("change", e => { b.browser = e.target.value; save(); });
+      $("fNewWin").addEventListener("change", e => { b.newWindow = e.target.checked; save(); });
+      break;
+    case "path":
+      box.innerHTML = `
+        <div class="field"><label for="fPath">Folder or file</label><input type="text" id="fPath" value="${esc(b.target)}" placeholder="C:\\Users\\…\\Documents">
+          <div class="row">${pick("folder", "Choose folder…")}${pick("any", "Choose file…")}</div></div>`;
+      $("fPath").addEventListener("input", e => { b.target = e.target.value.trim(); renderGrid(); save(); });
+      break;
+    case "hotkey":
+      box.innerHTML = `
+        <div class="field"><label for="fKeys">Keys</label>
+          <div class="row"><input type="text" id="fKeys" value="${esc(b.target)}" placeholder="ctrl+shift+m"><button class="btn" type="button" id="fRec">Record</button></div>
+          <select id="fPreset">${PRESETS.map(([v, n]) => `<option value="${esc(v)}">${esc(n)}</option>`).join("")}</select>
+          <span class="hint">Use + between keys, commas for a sequence (ctrl+c, ctrl+v). Keys go to the window in front on the PC.</span>
+          <span class="err" id="fKeysErr"></span></div>`;
+      $("fKeys").addEventListener("input", e => { b.target = e.target.value.trim(); checkKeys(); renderGrid(); save(); });
+      $("fPreset").addEventListener("change", e => {
+        if (!e.target.value) return;
+        b.target = e.target.value; $("fKeys").value = b.target;
+        setAutoLabel(b, e.target.selectedOptions[0].text.replace(/^(Media|Teams): /, ""));
+        e.target.value = ""; checkKeys(); renderGrid(); save();
+      });
+      $("fRec").addEventListener("click", startRecording);
+      checkKeys();
+      break;
+    case "text":
+      box.innerHTML = `<div class="field"><label for="fText">Text to type</label><textarea id="fText" placeholder="Hello! I'll be there in 5 minutes.">${esc(b.target)}</textarea>
+        <span class="hint">Typed into the window in front on the PC. New lines press Enter.</span></div>`;
+      $("fText").addEventListener("input", e => { b.target = e.target.value; save(); });
+      break;
+    case "command":
+      box.innerHTML = `
+        <div class="field"><label for="fCmd">Command</label><textarea id="fCmd" placeholder="e.g. start spotify:  or  shutdown /s /t 60">${esc(b.target)}</textarea></div>
+        <div class="row"><span class="hint">Run with</span><div class="seg" id="fShell"><button data-v="cmd" class="${b.shell !== "powershell" ? "on" : ""}">cmd</button><button data-v="powershell" class="${b.shell === "powershell" ? "on" : ""}">PowerShell</button></div></div>
+        <label class="check"><input type="checkbox" id="fHidden"${b.hidden ? " checked" : ""}> Run hidden (no console window)</label>
+        <span class="warn">Runs as you, with your permissions. Only add commands you understand.</span>`;
+      $("fCmd").addEventListener("input", e => { b.target = e.target.value; save(); });
+      $("fShell").addEventListener("click", e => {
+        const x = e.target.closest("button"); if (!x) return;
+        b.shell = x.dataset.v; $("fShell").querySelectorAll("button").forEach(y => y.classList.toggle("on", y === x)); save();
+      });
+      $("fHidden").addEventListener("change", e => { b.hidden = e.target.checked; save(); });
+      break;
+    case "system":
+      box.innerHTML = `<div class="field"><label for="fSys">Action</label>
+        <select id="fSys">${SYSTEM.map(([v, n]) => `<option value="${v}"${b.target === v ? " selected" : ""}>${n}</option>`).join("")}</select></div>`;
+      $("fSys").addEventListener("change", e => { b.target = e.target.value; setAutoLabel(b, e.target.selectedOptions[0].text); renderGrid(); save(); });
+      if (!b.target) b.target = "lock";
+      break;
+  }
+  box.querySelectorAll("[data-pick]").forEach(btn => btn.addEventListener("click", () => pickPath(btn.dataset.pick)));
+}
+
+async function pickPath(kind) {
+  const b = cur();
+  status("A file dialog opened on the PC (it may be behind this window)…");
+  try {
+    const r = await fetch(q(`/api/setup/pick/${kind}`), { method: "POST" }).then(x => x.json());
+    status("All changes saved", "ok");
+    if (!r.path) return;
+    b.target = r.path; b.args = null;
+    const name = r.path.split(/[\\/]/).filter(Boolean).pop() || r.path;
+    setAutoLabel(b, name.replace(/\.(exe|lnk|url|bat|cmd|appref-ms)$/i, ""));
+    renderTypeFields(); renderGrid(); save();
+  } catch (e) { status("Couldn't open the file dialog: " + e.message, "err"); }
+}
+
+let checkTimer;
+function checkKeys() {
+  clearTimeout(checkTimer);
+  checkTimer = setTimeout(async () => {
+    const b = cur(); const el = $("fKeysErr"); if (!el || !b) return;
+    if (!b.target) { el.textContent = ""; return; }
+    try {
+      const r = await fetch(q("/api/setup/checkkeys?spec=" + encodeURIComponent(b.target))).then(x => x.json());
+      el.textContent = r.ok ? "" : "Some keys aren't recognised. Use names like ctrl, shift, alt, win, a–z, 0–9, f1–f24, enter, esc, tab, space, up, down, left, right, home, end, delete, playpause, volup, mute.";
+    } catch {}
+  }, 300);
+}
+
+function startRecording() {
+  const btn = $("fRec"), input = $("fKeys");
+  if (recording) return;
+  recording = true;
+  btn.textContent = "Press keys…"; btn.classList.add("rec");
+  input.focus();
+  const names = { " ": "space", escape: "esc", arrowup: "up", arrowdown: "down", arrowleft: "left", arrowright: "right", pageup: "pgup", pagedown: "pgdn", delete: "delete", insert: "insert", contextmenu: "menu" };
+  const onKey = e => {
+    if (["Control", "Shift", "Alt", "Meta", "OS"].includes(e.key)) return;
+    e.preventDefault();
+    let k = e.key.toLowerCase();
+    if (/^Key[A-Z]$/.test(e.code)) k = e.code.slice(3).toLowerCase();
+    else if (/^Digit\d$/.test(e.code)) k = e.code.slice(5);
+    k = names[k] || k;
+    const combo = [e.ctrlKey && "ctrl", e.shiftKey && "shift", e.altKey && "alt", e.metaKey && "win", k].filter(Boolean).join("+");
+    const b = cur(); b.target = combo; input.value = combo;
+    stop(); checkKeys(); renderGrid(); save();
+  };
+  const stop = () => { recording = false; btn.textContent = "Record"; btn.classList.remove("rec"); input.removeEventListener("keydown", onKey); input.removeEventListener("blur", stop); };
+  input.addEventListener("keydown", onKey);
+  input.addEventListener("blur", stop);
+}
+
+/* ---------- weather ---------- */
+function renderWeatherSetup() {
+  const w = cfg.weather;
+  $("wxCurrent").innerHTML = w.lat != null ? `<span style="color:var(--fg);font-size:15px">${esc(w.name || "")}</span> <span class="hint">(${(+w.lat).toFixed(2)}, ${(+w.lon).toFixed(2)})</span>` : "Not set";
+  $("wxUnits").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === (w.units || "c")));
+  previewWeather();
+}
+$("wxForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const text = $("wxQuery").value.trim(); if (!text) return;
+  $("wxResults").innerHTML = `<span class="hint">Searching…</span>`;
+  try {
+    const list = await fetch(q("/api/setup/geocode?q=" + encodeURIComponent(text))).then(r => r.json());
+    if (list.error) throw new Error(list.error);
+    $("wxResults").innerHTML = list.length
+      ? list.map((r, i) => `<button type="button" data-i="${i}">${esc(r.name)} <small>${esc([r.region, r.country].filter(Boolean).join(", "))}</small></button>`).join("")
+      : `<span class="hint">No places found.</span>`;
+    $("wxResults").onclick = ev => {
+      const x = ev.target.closest("button"); if (!x) return;
+      const r = list[+x.dataset.i];
+      cfg.weather.name = [r.name, r.country].filter(Boolean).join(", ");
+      cfg.weather.lat = r.lat; cfg.weather.lon = r.lon;
+      $("wxResults").innerHTML = ""; $("wxQuery").value = "";
+      renderWeatherSetup(); save(true);
+      setTimeout(previewWeather, 800);
+    };
+  } catch (err) { $("wxResults").innerHTML = `<span class="err">Search failed: ${esc(err.message)}</span>`; }
+});
+$("wxUnits").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  cfg.weather.units = b.dataset.v; renderWeatherSetup(); save(true); setTimeout(previewWeather, 800);
+});
+$("wxClear").addEventListener("click", () => {
+  cfg.weather.name = null; cfg.weather.lat = null; cfg.weather.lon = null;
+  renderWeatherSetup(); save(true);
+});
+async function previewWeather() {
+  const p = $("wxPreview");
+  if (cfg.weather.lat == null) { p.textContent = "Set a location to see the weather on the Clock tab."; return; }
+  try {
+    const w = await fetch(q("/api/weather")).then(r => r.json());
+    if (!w.current) { p.innerHTML = `<span class="err">${esc(w.error || "Not available yet.")}</span>`; return; }
+    const d = w.daily?.[0];
+    p.innerHTML = `<div class="wxnow"><b>${Math.round(w.current.temp)}°</b> now in ${esc(w.name)} · feels ${Math.round(w.current.feels)}° · today ${Math.round(d?.max)}° / ${Math.round(d?.min)}°</div>
+      <div class="hint">Updates every 15 minutes.</div>`;
+  } catch (e) { p.innerHTML = `<span class="err">${esc(e.message)}</span>`; }
+}
+
+load();
+</script>
+</body>
+</html>
