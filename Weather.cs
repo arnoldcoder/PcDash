@@ -46,10 +46,29 @@ public sealed class WeatherService(ConfigStore config)
             $"https://api.open-meteo.com/v1/forecast?latitude={w.Lat:0.####}&longitude={w.Lon:0.####}") +
             "&current=temperature_2m,apparent_temperature,relative_humidity_2m,weather_code,is_day,wind_speed_10m" +
             "&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_probability_max" +
+            "&hourly=temperature_2m,weather_code,precipitation_probability,is_day&forecast_hours=12" +
             "&forecast_days=4&timezone=auto" + (f ? "&temperature_unit=fahrenheit&wind_speed_unit=mph" : "");
         var root = JsonNode.Parse(await Http.GetStringAsync(url))!;
         var cur = root["current"]!;
         var d = root["daily"]!;
+
+        // Hourly times come back as local wall-clock time without an offset; attach the location's
+        // UTC offset so the phone can compare them with "now" exactly (the data is cached 15 min).
+        var offset = TimeSpan.FromSeconds(root["utc_offset_seconds"]?.GetValue<int>() ?? 0);
+        var hours = new JsonArray();
+        if (root["hourly"] is JsonNode h && h["time"] is JsonArray ht)
+            for (int i = 0; i < ht.Count; i++)
+            {
+                var local = DateTime.Parse(ht[i]!.GetValue<string>(), CultureInfo.InvariantCulture);
+                hours.Add(new JsonObject
+                {
+                    ["time"] = new DateTimeOffset(local, offset).ToString("o", CultureInfo.InvariantCulture),
+                    ["code"] = h["weather_code"]?[i]?.GetValue<int>(),
+                    ["temp"] = h["temperature_2m"]?[i]?.GetValue<double>(),
+                    ["rain"] = h["precipitation_probability"]?[i]?.GetValue<int>(),
+                    ["isDay"] = h["is_day"]?[i]?.GetValue<int>() == 1,
+                });
+            }
         var days = new JsonArray();
         for (int i = 0; i < (d["time"] as JsonArray)!.Count; i++)
             days.Add(new JsonObject
@@ -78,6 +97,7 @@ public sealed class WeatherService(ConfigStore config)
                 ["code"] = cur["weather_code"]?.GetValue<int>(),
                 ["isDay"] = cur["is_day"]?.GetValue<int>() == 1,
             },
+            ["hourly"] = hours,
             ["daily"] = days,
         };
     }

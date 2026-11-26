@@ -157,6 +157,10 @@ canvas.spark{width:100%;height:clamp(22px,8vh,60px);display:block;margin-top:6px
 .wx-day{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1.2vh 6px;text-align:center;font-size:clamp(11px,3vh,15px);line-height:1.5}
 .wx-day .e{font-size:clamp(18px,6vh,32px);line-height:1.3}
 .wx-day .lo{color:var(--muted)}
+.wx-hours{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;text-align:center;font-size:clamp(10px,2.6vh,14px);line-height:1.4;color:var(--muted)}
+.wx-hour .e{font-size:clamp(14px,4.4vh,24px);line-height:1.3}
+.wx-hour .num{color:var(--fg)}
+.wx-hour .rain{font-size:.85em;color:var(--faint)}
 .wx-place{font-size:12px;color:var(--faint)}
 
 /* clock styles: digital (default), flip, flip-light, analog */
@@ -970,12 +974,22 @@ function renderWeather() {
     const name = new Date(d.date + "T12:00").toLocaleDateString([], { weekday: "short" });
     return `<div class="wx-day"><div>${esc(name)}</div><div class="e">${x.icon}</div><div class="num">${deg(d.max)} <span class="lo">${deg(d.min)}</span></div></div>`;
   }).join("");
+  // next 6 hours, starting with the first full hour after now (data may be up to 15 min old)
+  const nowMs = Date.now();
+  const hours = (w.hourly || []).filter(h => new Date(h.time).getTime() > nowMs).slice(0, 6).map(h => {
+    const x = wmo(h.code, !h.isDay), t = new Date(h.time);
+    const label = prot.fmt === "12"
+      ? (t.getHours() % 12 || 12) + (t.getHours() < 12 ? "a" : "p")
+      : String(t.getHours()).padStart(2, "0") + ":00";
+    return `<div class="wx-hour"><div>${label}</div><div class="e">${x.icon}</div><div class="num">${deg(h.temp)}</div>${h.rain ? `<div class="rain num">☔${h.rain}%</div>` : ""}</div>`;
+  }).join("");
   const time = iso => iso ? new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "–";
   el.innerHTML = `
     <div class="wx-now"><div class="wx-icon">${now.icon}</div><div class="wx-temp num">${deg(c.temp)}</div></div>
     <div><div class="wx-desc">${esc(now.text)}</div>
       <div class="wx-meta num">Feels ${deg(c.feels)} · H ${deg(today?.max)} L ${deg(today?.min)}${today?.rain != null ? ` · ☔ ${today.rain}%` : ""}<br>
       💧 ${c.humidity ?? "–"}% · 💨 ${c.wind == null ? "–" : Math.round(c.wind)} ${esc(w.windUnit || "")} · 🌅 ${time(today?.sunrise)} · 🌇 ${time(today?.sunset)}</div></div>
+    ${hours ? `<div class="wx-hours">${hours}</div>` : ""}
     <div class="wx-days">${days}</div>
     <div class="wx-place">${esc(w.name || "")}${w.error ? " · " + esc(w.error) : ""}</div>`;
 }
